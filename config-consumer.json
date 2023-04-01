@@ -85,13 +85,6 @@
       "number_assets": 120,
       "sort_key": "quoteVolume"
     },
-    // TEST -->
-    {
-        "method": "OffsetFilter",
-        "offset": 0,
-        "number_assets": 33
-    },
-    // <-- TEST
     { "method": "ShuffleFilter" }
   ],
   "external_message_consumer": {
@@ -134,7 +127,7 @@
   },
   "api_server": {
     "enabled": true,
-    "listen_ip_address": "0.0.0.0",
+    "listen_ip_address": "127.0.0.1",
     "listen_port": 8080,
     "verbosity": "error",
     "enable_openapi": false,

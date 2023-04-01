@@ -94,8 +94,8 @@
   ],
   "telegram": {
     "enabled": false,
-    "token": "-------------------------TELEGRAM-TOKEN----pas-obligé----------------------",
-    "chat_id": "-------------------------TELEGRAM-CHAT-ID----pas-obligé----------------------",
+    "token": "-------------------------TELEGRAM-TOKEN--------------------------",
+    "chat_id": "-------------------------TELEGRAM-CHAT-ID--------------------------",
     "allow_custom_messages": true,
     "balance_dust_level": 5.00,
     "keyboard": [
@@ -105,7 +105,7 @@
   },
   "api_server": {
     "enabled": true,
-    "listen_ip_address": "0.0.0.0",
+    "listen_ip_address": "127.0.0.1",
     "listen_port": 8083,
     "verbosity": "error",
     "enable_openapi": false,
