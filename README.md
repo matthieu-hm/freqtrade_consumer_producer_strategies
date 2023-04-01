@@ -1,6 +1,6 @@
 # FreqTrade consumer/producer strategy
 
-> /!\\ Experimental
+> **/!\\ Experimental**
 
 ## The idea
 
@@ -15,13 +15,30 @@ Ex:
 * Producer 3: generate dataframe for 50 paires (100 to 149)
 * **Consumer**: handle 150 paires with dataframe (and signals) from producers
 
-![producer/consumer](./assets/producer-consumer-unsync.png)
+![producer/consumer](./assets/freqtrade-producers-consumer.png)
 
 
 ## How it work
 
-Strategy auto-detect if is producer or consumer through the config `external_message_consumer.producers`. If has at least 1 producer, it's a consumer.
+Strategy auto-detect if is producer or consumer through the config. If has at least 1 producer, it's a consumer.
 
+```json
+{
+  "external_message_consumer": {
+    "enabled": true,
+    "producers": [
+      {
+        "name": "producer-1", // Required & unique
+        "host": "127.0.0.1",
+        "port": 8081,
+        "secure": false,
+        "ws_token": "super-secret-str-1"
+      }
+      // Other producers...
+    ]
+  }
+}
+```
 
 ### Producer
 
@@ -40,46 +57,39 @@ It works as any others strategies.
 
 ## Limitations
 
-* In `populate_indicators_from_producers` we must list all indicators used in the strategy in `required_columns`. When starting the bot with active trade, strategy callbacks that use indicators are going to throw errors.
 * `forceexit` on producers won't forceexit on consumer
-* `forceentry` on producers won't forceentry on consumer (not fully tested)
+* `forceentry` on producers won't forceentry on consumer
 * `rebuy` on producers won't rebuy on consumer (not fully tested)
-* The consumer always starts a trade for all active trades of the producers. The consumer does not clear the entry signal
 
 
-## Bug
+## Observations
 
 ### Unsync exit from callback
 
-With the ProducerConsumerNFIX2AutoBuyEverything strategy, the exit signal is generated in the `custom_exit` callback, and the consumer uses the data frame provided by the producers to execute that callback. However, we can observe that the decisions of the producers and the consumer to close a trade or not are not synchronized.
+The NFIX2 strategy do not use `populate_exit_trend` to generate a exit signal in the dataframe, it uses the `custom_exit` callback to handle trade exit. So the consumer won't receive a exit signal. The consumer will uses the data frame provided by the producers to execute the `custom_exit` callback (and others). As a result, we can observe that the decisions of the producers and the consumer to close a trade or not are not synchronized.
 
-> Sometime the producer close a trade but not the consumer.
-
-> Sometime the consumer close a trade but not the producer. (This is problematic)
-
-**Combined with the fact that the consumer always starts a trade for all active trades of the producers, this becomes a huge problem**. The consumer will restart the trade for the same pair. This will result in a trade that is most likely a bad decision.
-
-There is 3 possible solutions:
-  * Producers signals needs to be cleared
-  * Consumer need to know how old is the signal and depending how old is the signal is ignore it (tried `ignore_buying_expired_candle_after` but producers dataframe still contains `entry_signal` )
-  * Improve dataframe merge on the consumer side (??)
+> Sometime the producer close a trade before the consumer, sometime it happens the other way around.
 
 
 ## Strategies files
 
-* `ProducerConsumerNFIX2AutoBuyEverything.py`: is a "working" strategy adapted to use the producer/consumer mode.
+* `DummyConsumerStrategy.py`: as the name suggests, it's a dummy consumer strategy. It's will get the dataframe from the producers and do whateever the signals in the dataframe says.
 
-* `ProducerConsumerStrategy.py`: is only the code that I added to the strategy to make it work with the producer/consumer mode, easier to read and understand.
+* [REMOVED] `ProducerConsumerNFIX2AutoBuyEverything.py`: was the source of the bug that made me think that the consumer automatically buys for all producers' active trades. In fact, that strategy (producer side) was buying everything and everytime. So there were always a buy_signal produced.
 
 
 ## Run the test strategy
 
 ``` bash
 # CONSUMER if you want to run more than 1 producer update config.json (paires whitelist and producers list):
-freqtrade trade --config user_data/config.json --userdir user_data --strategy ProducerConsumerNFIX2AutoBuyEverything
+freqtrade trade --config user_data/config-consumer.json --strategy DummyConsumerStrategy
 
 # PRODUCERS:
-freqtrade trade --config user_data/config-producer-1.json --userdir user_data --strategy ProducerConsumerNFIX2AutoBuyEverything
-# freqtrade trade --config user_data/config-producer-2.json --userdir user_data --strategy ProducerConsumerNFIX2AutoBuyEverything
-# freqtrade trade --config user_data/config-producer-3.json --userdir user_data --strategy ProducerConsumerNFIX2AutoBuyEverything
+freqtrade trade --config user_data/config-producer-1.json --strategy SomeStrategyThatGenerateDataFrameWithBuySellSignals
+# freqtrade trade --config user_data/config-producer-2.json --strategy SomeStrategyThatGenerateDataFrameWithBuySellSignals
+# freqtrade trade --config user_data/config-producer-3.json --strategy SomeStrategyThatGenerateDataFrameWithBuySellSignals
 ```
+
+> I made a fork of the NFIX2 where I added the code to use producer/consumer mode. **/!\\ I do not guarantee that I will keep the fork up to date. Do not use it live**
+
+> https://github.com/matthieu-hm/NostalgiaForInfinity
