@@ -127,7 +127,26 @@ class DummyConsumerStrategy(IStrategy):
 
                 if not producer_dataframe.empty:
                     log.debug(f"[{pair}] Get dataframe from producer \"{producer['name']}\"")
-                    return producer_dataframe
+
+                    merged_dataframe = merge_informative_pair(dataframe, producer_dataframe,
+                                                      self.timeframe, self.timeframe,
+                                                      ffill=True,
+                                                      append_timeframe=False)
+
+                    # The function merge_informative_pair() adds suffixes to the requiered columns
+                    # ('date', 'open', 'high', 'low', 'close', 'volume')
+                    # origin dataframe columns: _x
+                    # producer_dataframe columns: _y
+
+                    # -> We keep only the columns from the consumer dataframe (origin),
+                    #    as the consumer update the values more often than the producers
+
+                    # Get all merged_dataframe columns ending with _x
+                    merged_dataframe_columns_x = [col for col in merged_dataframe.columns if col.endswith('_x')]
+                    # Remove suffix "_x" from merged_dataframe columns
+                    merged_dataframe.rename(columns=dict(zip(merged_dataframe_columns_x, [col[:-2] for col in merged_dataframe_columns_x])), inplace=True)
+
+                    return merged_dataframe
 
         # No dataframe provided by any producer: minimal dataframe fallback
         required_columns_default_0 = ['enter_long', 'enter_short', 'exit_long', 'exit_short']
